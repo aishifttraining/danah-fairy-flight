@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Fairy Flight</title>
+  <style>
+    :root {
+      --night: #0f172a;
+      --violet: #2e1065;
+      --ink: #f8fafc;
+      --emerald: #34d399;
+      --gold: #fcd34d;
+      --glass: rgba(15, 23, 42, .56);
+      --line: rgba(220, 252, 231, .22);
+      --shadow: 0 24px 80px rgba(2, 6, 23, .55);
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--night); }
+    body {
+      min-width: 320px;
+      min-height: 100dvh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(196, 181, 253, .24), transparent 28rem),
+        radial-gradient(circle at 0 100%, rgba(5, 150, 105, .15), transparent 32rem),
+        linear-gradient(135deg, var(--night), var(--violet));
+    }
+
+    .page-shell {
+      width: min(100%, 1000px);
+      min-height: 100dvh;
+      margin: auto;
+      padding: clamp(18px, 3vw, 32px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: clamp(18px, 3vw, 28px);
+    }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand, .header-actions { display: flex; align-items: center; gap: 10px; }
+    .brand { gap: 12px; min-width: 0; }
+    .brand-mark {
+      flex: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50% 50% 48% 52%;
+      border: 1px solid rgba(254, 243, 199, .7);
+      background: radial-gradient(circle at 36% 32%, #fff, #fcd34d 24%, #34d399 55%, transparent 70%);
+      box-shadow: 0 0 26px rgba(252, 211, 77, .62);
+      transform: rotate(-18deg);
+    }
+    .eyebrow { display: block; margin-bottom: 2px; color: #a7f3d0; font-size: .67rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: .95; letter-spacing: -.04em; text-shadow: 0 0 28px rgba(252, 211, 77, .3); }
+
+    .best-pill, .sound-toggle, .hud-card, .game-card {
+      border: 1px solid var(--line);
+      background: var(--glass);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.09);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .best-pill { display: grid; gap: 2px; min-width: 76px; padding: 9px 13px; border-radius: 14px; text-align: right; }
+    .best-pill span, .hud-card span { color: #c4b5fd; font-size: .65rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .best-pill strong { color: var(--gold); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    .sound-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      min-height: 46px;
+      padding: 10px;
+      border-radius: 14px;
+      color: #fef3c7;
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease, border-color .16s ease;
+      touch-action: manipulation;
+    }
+    .sound-toggle:hover { background: rgba(52, 211, 153, .16); border-color: rgba(167, 243, 208, .65); }
+    .sound-toggle:active { transform: scale(.95); }
+    .sound-toggle[aria-pressed="true"] { color: #c4b5fd; background: rgba(46, 16, 101, .62); }
+    .sound-toggle svg { width: 21px; height: 21px; }
+    button:focus-visible, canvas:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+    main { display: grid; place-items: center; min-height: 0; }
+    .game-card { position: relative; width: min(100%, 540px); overflow: hidden; border-radius: clamp(22px, 4vw, 32px); isolation: isolate; }
+    .hud { position: absolute; z-index: 3; inset: 14px 14px auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: auto; pointer-events: none; transition: opacity .18s ease; }
+    .hud.is-hidden { opacity: 0; visibility: hidden; }
+    .hud-card { min-width: 0; padding: 8px 9px; border-radius: 13px; }
+    .hud-card:nth-child(2) { text-align: center; }
+    .hud-card:last-child { text-align: right; }
+    .hud-card strong { display: block; margin-top: 1px; font-size: clamp(1.03rem, 4vw, 1.4rem); font-variant-numeric: tabular-nums; }
+    .hud-card em { display: block; margin-top: 1px; color: #93c5fd; font-size: .62rem; font-style: normal; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .coin-card span b { color: var(--gold); font-size: .9rem; }
+    #coins, #timer { color: var(--gold); }
+    canvas { display: block; width: 100%; aspect-ratio: 3 / 4; touch-action: manipulation; cursor: pointer; outline: none; background: linear-gradient(180deg, #0f172a, #2e1065); }
+
+    .stage-message {
+      position: absolute;
+      z-index: 4;
+      inset: 0;
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      padding: 84px 22px 22px;
+      text-align: center;
+      background: linear-gradient(180deg, rgba(15, 23, 42, .02), rgba(15, 23, 42, .66) 48%, rgba(2, 6, 23, .86));
+      transition: opacity .25s ease, visibility .25s ease;
+    }
+    .stage-message.is-hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+    .message-panel {
+      width: min(100%, 390px);
+      padding: clamp(18px, 4vw, 25px);
+      border: 1px solid rgba(254, 243, 199, .25);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, .86), rgba(30, 12, 66, .82));
+      box-shadow: 0 18px 48px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+    }
+    .stage-eyebrow { margin: 0 0 5px; color: #a7f3d0; font-size: .67rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .stage-title { margin: 0 0 10px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.5rem, 5vw, 2.05rem); line-height: 1; letter-spacing: -.035em; }
+    .stage-message[data-stage="intro"] .stage-title { color: transparent; background: linear-gradient(120deg, #fef3c7, #fcd34d 46%, #6ee7b7); background-clip: text; -webkit-background-clip: text; text-shadow: 0 0 27px rgba(252, 211, 77, .24); }
+    .stage-message[data-stage="loss"] .stage-title { color: #fef3c7; }
+    .stage-message[data-stage="victory"] .stage-title { color: #fef3c7; text-shadow: 0 0 22px rgba(252, 211, 77, .42); }
+    .stage-copy { margin: 0; color: #ecebff; font-size: .91rem; line-height: 1.55; }
+    .result-score { margin: 13px 0 0; color: #a7f3d0; font-size: .82rem; font-weight: 800; letter-spacing: .05em; }
+    .result-score[hidden] { display: none; }
+    .stage-new-best { min-height: 1.2em; margin: 5px 0 0; color: var(--gold); font-size: .78rem; font-weight: 800; }
+    .stage-new-best[hidden] { display: none; }
+    .primary-button {
+      min-height: 48px;
+      width: min(100%, 230px);
+      margin-top: 17px;
+      padding: 11px 17px;
+      border: 1px solid rgba(254, 243, 199, .56);
+      border-radius: 13px;
+      color: #182013;
+      background: linear-gradient(135deg, #fef3c7, #fcd34d);
+      box-shadow: 0 9px 25px rgba(252,211,77,.23);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .16s ease, filter .16s ease;
+      touch-action: manipulation;
+    }
+    .primary-button:hover { filter: brightness(1.07); }
+    .primary-button:active { transform: scale(.97); }
+    .primary-button svg { width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; }
+    .stage-help { margin: 11px 0 0; color: #c4b5fd; font-size: .73rem; }
+
+    .instructions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; width: min(100%, 540px); }
+    .instruction { display: grid; place-items: center; gap: 5px; padding: 10px 8px; border: 1px solid rgba(196, 181, 253, .15); border-radius: 14px; background: rgba(15, 23, 42, .28); color: #d8d4fe; text-align: center; font-size: .71rem; line-height: 1.2; }
+    .instruction b { color: #fef3c7; font-size: .76rem; letter-spacing: .04em; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 390px) {
+      .page-shell { padding: 14px; gap: 14px; }
+      .brand-mark { width: 36px; height: 36px; }
+      .best-pill { min-width: 64px; padding: 7px 10px; }
+      .header-actions { gap: 7px; }
+      .sound-toggle { min-width: 42px; min-height: 42px; }
+      .stage-message { padding: 76px 14px 14px; }
+      .message-panel { padding: 18px; }
+      .stage-copy { font-size: .84rem; }
+    }
+    @media (min-width: 760px) { .game-card { width: min(100%, 510px); } canvas { aspect-ratio: 4 / 5; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div><span class="eyebrow">Twilight arcade</span><h1>Fairy Flight</h1></div>
+      </div>
+      <div class="header-actions">
+        <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false" aria-label="Mute BGM and SFX" title="Mute BGM and SFX">
+          <svg id="soundIcon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          <span class="sr-only" id="soundLabel">Mute BGM and SFX</span>
+        </button>
+        <div class="best-pill" aria-label="Best score"><span>Best</span><strong id="bestScore">0</strong></div>
+      </div>
+    </header>
+
+    <main>
+      <section class="game-card" aria-label="Fairy Flight game">
+        <div class="hud is-hidden" id="hud">
+          <div class="hud-card coin-card"><span>Coins <b aria-hidden="true">✦</b></span><strong id="coins">0</strong><em id="wardStatus">Ward: 0</em></div>
+          <div class="hud-card"><span>Score</span><strong id="score">0</strong></div>
+          <div class="hud-card"><span>Time</span><strong id="timer">1:00</strong></div>
+        </div>
+        <canvas id="game" width="720" height="960" tabindex="-1" aria-label="Fairy Flight game area. Use Space, Arrow Up, or tap to flutter upward."></canvas>
+        <section class="stage-message" id="stageMessage" data-stage="intro" aria-labelledby="stageTitle" aria-describedby="stageCopy">
+          <div class="message-panel">
+            <p class="stage-eyebrow" id="stageEyebrow">A moonlit quest</p>
+            <h2 class="stage-title" id="stageTitle">Fairy Flight</h2>
+            <p class="stage-copy" id="stageCopy">Night has fallen over the Enchanted Forest and its magical aura is fading. Help the fairy fly safely through ancient trees and glowing mushrooms for 60 seconds to restore the light!</p>
+            <p class="result-score" id="resultScore" hidden></p>
+            <p class="stage-new-best" id="newBestLine" hidden>A new best flight!</p>
+            <button class="primary-button" id="restartButton" type="button">Start Journey</button>
+            <p class="stage-help" id="stageHelp">Sound begins after you start. Space or tap during flight to flutter.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="instructions" aria-label="How to play">
+      <div class="instruction"><b>Space</b><span>flutter upward</span></div>
+      <div class="instruction"><b>Tap</b><span>touch to rise</span></div>
+      <div class="instruction"><b>60 sec</b><span>restore the light</span></div>
+    </footer>
+  </div>
+  <p class="sr-only" id="announcer" aria-live="assertive" aria-atomic="true"></p>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const hud = document.getElementById('hud');
+      const scoreEl = document.getElementById('score');
+      const coinsEl = document.getElementById('coins');
+      const wardStatus = document.getElementById('wardStatus');
+      const bestEl = document.getElementById('bestScore');
+      const timerEl = document.getElementById('timer');
+      const stage = document.getElementById('stageMessage');
+      const stageEyebrow = document.getElementById('stageEyebrow');
+      const stageTitle = document.getElementById('stageTitle');
+      const stageCopy = document.getElementById('stageCopy');
+      const resultScore = document.getElementById('resultScore');
+      const newBestLine = document.getElementById('newBestLine');
+      const stageHelp = document.getElementById('stageHelp');
+      const restartButton = document.getElementById('restartButton');
+      const soundToggle = document.getElementById('soundToggle');
+      const soundLabel = document.getElementById('soundLabel');
+      const soundIcon = document.getElementById('soundIcon');
+      const announcer = document.getElementById('announcer');
+      const W = canvas.width;
+      const H = canvas.height;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const scoreKey = 'fairy-flight-best-score';
+      const muteKey = 'fairy-flight-muted';
+      const coinKey = 'fairy-flight-coins';
+      let best = Number(getStoredValue(scoreKey)) || 0;
+      let coinBank = Number(getStoredValue(coinKey)) || 0;
+      let game;
+      let cinematicFrame = 0;
+      let runSequence = 0;
+      let startInProgress = false;
+
+      const icons = {
+        on: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
+        off: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 5"/><path d="m21 9-5 5"/>'
+      };
+      const stageContent = {
+        intro: {
+          eyebrow: 'A moonlit quest', title: 'Fairy Flight',
+          copy: 'Night has fallen over the Enchanted Forest and its magical aura is fading. Help the fairy fly safely through ancient trees and glowing mushrooms for 60 seconds to restore the light!',
+          button: 'Start Journey', help: 'Sound begins after you start. Space or tap during flight to flutter.'
+        },
+        loss: {
+          eyebrow: 'A gentle pause', title: 'Try Again',
+          copy: 'The ancient forest caught your wing, but its light still believes in you.',
+          button: 'Try Again', help: 'Press the button, Space, or Arrow Up to begin another flight.'
+        },
+        victory: {
+          eyebrow: 'The grove glows again', title: 'Thank You from Fairy Flight!',
+          copy: 'Your brave wings restored the Enchanted Forest. The fairies will carry your starlight through the night.',
+          button: 'Begin Flight', help: 'The forest is ready whenever you are.'
+        }
+      };
+
+      const audio = {
+        context: null, master: null, muted: getStoredValue(muteKey) === 'true', musicTimer: 0, musicRunning: false, phrase: 0,
+        ensure() {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return false;
+          if (!this.context) {
+            this.context = new AudioContext();
+            this.master = this.context.createGain();
+            this.master.gain.value = this.muted ? 0.0001 : 0.28;
+            this.master.connect(this.context.destination);
+          }
+          if (this.context.state === 'suspended') this.context.resume().catch(() => {});
+          return true;
+        },
+        setMuted(value) {
+          this.muted = value;
+          if (this.master && this.context) this.master.gain.setTargetAtTime(value ? 0.0001 : 0.28, this.context.currentTime, .025);
+          if (value) this.stopMusic();
+          else if (game && game.running) this.startMusic();
+          try { localStorage.setItem(muteKey, String(value)); } catch (_) { /* Storage may be unavailable. */ }
+          updateSoundToggle();
+        },
+        tone(frequency, start, duration, options = {}) {
+          if (!this.context || !this.master) return;
+          const oscillator = this.context.createOscillator();
+          const gain = this.context.createGain();
+          oscillator.type = options.type || 'sine';
+          oscillator.frequency.setValueAtTime(Math.max(20, frequency), start);
+          if (options.endFrequency) oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, options.endFrequency), start + duration);
+          gain.gain.setValueAtTime(.0001, start);
+          gain.gain.exponentialRampToValueAtTime(options.volume ?? .05, start + Math.min(.04, duration * .25));
+          gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+          oscillator.connect(gain); gain.connect(this.master);
+          oscillator.start(start); oscillator.stop(start + duration + .05);
+        },
+        startMusic() {
+          if (!this.ensure() || this.musicRunning) return;
+          this.musicRunning = true; this.phrase = 0; this.schedulePhrase();
+        },
+        stopMusic() { this.musicRunning = false; window.clearTimeout(this.musicTimer); this.musicTimer = 0; },
+        schedulePhrase() {
+          if (!this.musicRunning || !this.context) return;
+          const root = [220, 196, 174.61, 196][this.phrase % 4];
+          const notes = [0, 7, 12, 7, 3, 10, 7, 2];
+          const now = this.context.currentTime + .06;
+          notes.forEach((semitones, index) => {
+            const when = now + index * .34;
+            const frequency = root * Math.pow(2, semitones / 12);
+            this.tone(frequency, when, .42, { type: 'sine', volume: .032 });
+            if (index % 2 === 0) this.tone(frequency * 2, when + .015, .2, { type: 'triangle', volume: .012 });
+          });
+          this.tone(root / 2, now, 2.72, { type: 'sine', volume: .02 });
+          this.phrase++; this.musicTimer = window.setTimeout(() => this.schedulePhrase(), 2600);
+        },
+        jump() {
+          if (!this.ensure()) return;
+          const now = this.context.currentTime;
+          this.tone(659.25, now, .16, { type: 'sine', volume: .09, endFrequency: 987.77 });
+          this.tone(1318.51, now + .055, .22, { type: 'triangle', volume: .045 });
+        },
+        lose() {
+          if (!this.ensure()) return;
+          const now = this.context.currentTime;
+          this.tone(392, now, .58, { type: 'triangle', volume: .11, endFrequency: 94 });
+          this.tone(196, now + .03, .64, { type: 'sine', volume: .06, endFrequency: 55 });
+        },
+        victory() {
+          if (this.muted || !this.ensure()) return;
+          const now = this.context.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach((note, index) => this.tone(note, now + index * .1, .42, { type: 'triangle', volume: .09 }));
+          this.tone(1567.98, now + .42, .75, { type: 'sine', volume: .055 });
+        },
+        coin() {
+          if (this.muted || !this.ensure()) return;
+          const now = this.context.currentTime;
+          this.tone(1174.66, now, .13, { type: 'sine', volume: .075, endFrequency: 1567.98 });
+          this.tone(2093, now + .045, .19, { type: 'triangle', volume: .04 });
+        },
+        shieldPickup() {
+          if (this.muted || !this.ensure()) return;
+          const now = this.context.currentTime;
+          [440, 659.25, 880].forEach((note, index) => this.tone(note, now + index * .075, .26, { type: 'sine', volume: .06 }));
+        },
+        shieldBreak() {
+          if (this.muted || !this.ensure()) return;
+          const now = this.context.currentTime;
+          this.tone(880, now, .32, { type: 'triangle', volume: .09, endFrequency: 180 });
+          this.tone(1244, now + .02, .24, { type: 'sine', volume: .04, endFrequency: 330 });
+        },
+        dawn() {
+          if (this.muted || !this.ensure()) return;
+          const now = this.context.currentTime;
+          [392, 493.88, 587.33].forEach((note, index) => this.tone(note, now + index * .12, .48, { type: 'triangle', volume: .045 }));
+        }
+      };
+
+      function getStoredValue(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+      function random(min, max) { return min + Math.random() * (max - min); }
+      function hash(seed, index) { return Math.abs(Math.sin(seed * 12.9898 + index * 78.233) * 43758.5453) % 1; }
+      function formatTime(seconds) { const value = Math.max(0, Math.ceil(seconds)); return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`; }
+      function saveBest() { try { localStorage.setItem(scoreKey, String(best)); } catch (_) { /* Storage may be unavailable. */ } }
+      function updateSoundToggle() {
+        const label = audio.muted ? 'Unmute BGM and SFX' : 'Mute BGM and SFX';
+        soundToggle.setAttribute('aria-pressed', String(audio.muted)); soundToggle.setAttribute('aria-label', label); soundToggle.title = label;
+        soundLabel.textContent = label; soundIcon.innerHTML = audio.muted ? icons.off : icons.on;
+      }
+      function saveCoins() { try { localStorage.setItem(coinKey, String(coinBank)); } catch (_) { /* Storage may be unavailable. */ } }
+      function updateHud() {
+        scoreEl.textContent = game.score;
+        coinsEl.textContent = game.coinsCollected;
+        wardStatus.textContent = `Ward: ${game.shieldCharges ? 'Ready' : '0'}`;
+        timerEl.textContent = formatTime(game.timeLeft);
+        bestEl.textContent = best;
+      }
+      function createFireflies() {
+        return Array.from({ length: reducedMotion ? 28 : 58 }, () => ({ x: random(12, W - 12), y: random(70, H - 25), r: random(1, 3.4), a: random(.25, .9), speed: random(.18, .7), phase: random(0, Math.PI * 2), color: Math.random() > .5 ? '252,211,77' : '110,231,183' }));
+      }
+      function createStars() {
+        return Array.from({ length: 44 }, (_, i) => ({ x: hash(91, i) * W, y: 42 + hash(271, i) * H * .53, r: .7 + hash(381, i) * 2.1, phase: hash(471, i) * Math.PI * 2 }));
+      }
+      function createGame(phase) {
+        return {
+          phase, runId: ++runSequence, running: false, celebrating: false, score: 0, coinsCollected: 0, timeLeft: 60, last: 0, elapsed: 0, activeElapsed: 0, world: 0, spawn: 0,
+          fairy: { x: W * .28, y: H * .48, vy: 0, angle: 0, wing: 0 }, obstacles: [], collectibles: [], effects: [], particles: [], confetti: [], fireflies: createFireflies(), stars: createStars(),
+          shieldCharges: 0, shieldRecovery: 0, shieldCooldown: 5000, dawnProgress: 0, dawnAnnounced: false,
+          highScoreCelebrated: false, victoryPlayed: false, newHighAchieved: false, lastJumpSound: 0
+        };
+      }
+      function setStage(nextPhase, focusButton = false) {
+        const content = stageContent[nextPhase];
+        game.phase = nextPhase;
+        stage.dataset.stage = nextPhase;
+        if (content) {
+          stageEyebrow.textContent = content.eyebrow;
+          stageTitle.textContent = content.title;
+          stageCopy.textContent = content.copy;
+          restartButton.textContent = content.button;
+          stageHelp.textContent = content.help;
+        }
+        const resultVisible = nextPhase === 'loss' || nextPhase === 'victory';
+        resultScore.hidden = !resultVisible;
+        newBestLine.hidden = !game.newHighAchieved;
+        if (resultVisible) resultScore.textContent = `Starlight gathered: ${game.score}`;
+        if (nextPhase === 'running') {
+          stage.classList.add('is-hidden'); hud.classList.remove('is-hidden'); canvas.tabIndex = 0;
+        } else {
+          stage.classList.remove('is-hidden'); hud.classList.add('is-hidden'); canvas.tabIndex = -1;
+          if (focusButton) requestAnimationFrame(() => restartButton.focus({ preventScroll: true }));
+        }
+      }
+      function stopCinematic() { if (cinematicFrame) cancelAnimationFrame(cinematicFrame); cinematicFrame = 0; }
+      function resetToIntro() {
+        stopCinematic(); audio.stopMusic(); game = createGame('intro'); updateHud(); setStage('intro'); draw(); startIntroCinematic();
+      }
+      function startIntroCinematic() {
+        if (reducedMotion || game.phase !== 'intro') return;
+        let last = performance.now();
+        const frame = now => {
+          if (game.phase !== 'intro' || document.hidden) { cinematicFrame = 0; return; }
+          const dt = Math.min(35, now - last || 16.67); last = now;
+          updateAmbient(dt); draw(); cinematicFrame = requestAnimationFrame(frame);
+        };
+        cinematicFrame = requestAnimationFrame(frame);
+      }
+      function beginFlight() {
+        if (game.phase === 'running') { flap(); return; }
+        if (startInProgress) return;
+        startInProgress = true;
+        try {
+          stopCinematic();
+          game = createGame('running');
+          game.running = true;
+          game.last = performance.now();
+          const runId = game.runId;
+          updateHud(); setStage('running'); canvas.focus({ preventScroll: true });
+          requestAnimationFrame(now => loop(now, runId));
+          flap();
+          try { audio.ensure(); audio.startMusic(); } catch (_) { /* Optional browser audio must not block play. */ }
+        } finally {
+          startInProgress = false;
+        }
+      }
+      function flap() {
+        if (!game.running) return;
+        game.fairy.vy = -11.3; game.fairy.angle = -.45;
+        const now = performance.now();
+        if (now - game.lastJumpSound > 75) { audio.jump(); game.lastJumpSound = now; }
+        for (let i = 0; i < 13; i++) game.particles.push({ x: game.fairy.x - 16, y: game.fairy.y + random(-8, 10), vx: random(-4.6, -1.3), vy: random(-1.5, 1.5), life: random(22, 42), size: random(1.4, 4), hue: Math.random() > .35 ? 48 : 158 });
+      }
+      function getDifficulty() {
+        const seconds = game.activeElapsed / 1000;
+        if (seconds < 20) return { gap: 246, speed: 4.25, spawnInterval: 1540 };
+        if (seconds < 40) return { gap: 228, speed: 4.75, spawnInterval: 1430 };
+        return { gap: 210, speed: 5.25, spawnInterval: 1280 };
+      }
+      function addObstacle(difficulty) {
+        const gap = difficulty.gap;
+        const center = random(300, H - 250);
+        const x = W + 70;
+        const speed = difficulty.speed;
+        game.obstacles.push({ x, width: random(110, 142), top: center - gap / 2, bottom: center + gap / 2, passed: false, seed: Math.random() * 1000 });
+        const coinCount = Math.random() > .6 ? 2 : 1;
+        for (let i = 0; i < coinCount; i++) game.collectibles.push({ type: 'coin', x: x + 55 + i * 46, y: center + (i - (coinCount - 1) / 2) * 42, radius: 15, speed, phase: random(0, Math.PI * 2), spin: random(0, Math.PI * 2) });
+        if (!game.shieldCharges && game.shieldCooldown <= 0 && !game.collectibles.some(item => item.type === 'shield')) {
+          game.collectibles.push({ type: 'shield', x: x + 110, y: center + random(-gap * .18, gap * .18), radius: 23, speed, phase: random(0, Math.PI * 2), spin: 0 });
+          game.shieldCooldown = 9000 + random(0, 4000);
+        }
+      }
+      function overlapsFairy(item) {
+        const dx = item.x - game.fairy.x; const dy = item.y - game.fairy.y;
+        return dx * dx + dy * dy < (item.radius + 22) ** 2;
+      }
+      function addEffect(x, y, color, count = 18) {
+        const cap = reducedMotion ? 36 : 90;
+        for (let i = 0; i < count && game.effects.length < cap; i++) {
+          const angle = random(0, Math.PI * 2); const speed = random(1.4, 6.4);
+          game.effects.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, radius: random(2, 5), life: random(18, 45), color });
+        }
+      }
+      function collectPickups() {
+        for (const item of game.collectibles) {
+          if (item.collected || !overlapsFairy(item)) continue;
+          item.collected = true;
+          if (item.type === 'coin') {
+            game.coinsCollected++; coinBank++; saveCoins(); audio.coin(); addEffect(item.x, item.y, '#fcd34d', 12); announcer.textContent = `Coin collected. ${game.coinsCollected} this flight.`;
+          } else {
+            game.shieldCharges = 1; audio.shieldPickup(); addEffect(item.x, item.y, '#60a5fa', 24); announcer.textContent = 'Magic shield ready. One impact is protected.';
+          }
+        }
+        game.collectibles = game.collectibles.filter(item => !item.collected && item.x + item.radius > -30);
+      }
+      function absorbImpact(obstacle) {
+        if (!game.shieldCharges || game.shieldRecovery > 0) return false;
+        game.shieldCharges = 0; game.shieldRecovery = 380; audio.shieldBreak(); addEffect(game.fairy.x, game.fairy.y, '#60a5fa', 30); announcer.textContent = 'Shield shattered and protected the fairy.';
+        if (obstacle) obstacle.destroyed = true;
+        else { game.fairy.y = Math.max(48, Math.min(H - 40, game.fairy.y)); game.fairy.vy = game.fairy.y < H / 2 ? 5 : -5; }
+        return true;
+      }
+      function celebrate(playSound = true, count = reducedMotion ? 30 : 100) {
+        const colors = [45, 164, 188, 276, 326];
+        for (let i = 0; i < count; i++) {
+          const angle = random(-Math.PI, 0); const speed = random(2.2, 8.1);
+          game.confetti.push({ x: random(W * .16, W * .84), y: random(H * .1, H * .5), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - random(0, 2), size: random(3, 9), rotation: random(0, Math.PI * 2), spin: random(-.25, .25), life: random(52, 112), hue: colors[i % colors.length], shape: i % 3 });
+        }
+        if (playSound && !game.victoryPlayed) { audio.victory(); game.victoryPlayed = true; }
+      }
+      function finishCelebration(now) {
+        if (!game.celebrating || game.phase !== 'victory') return;
+        const dt = Math.min(35, now - game.last || 16.67); game.last = now; updateAmbient(dt); updateParticles(dt); draw();
+        if (game.confetti.length) requestAnimationFrame(finishCelebration); else game.celebrating = false;
+      }
+      function endGame(reason) {
+        if (!game.running) return;
+        game.running = false; audio.stopMusic();
+        const victory = reason === 'time';
+        if (victory) {
+          game.phase = 'victory'; celebrate(true, reducedMotion ? 36 : 116); game.celebrating = true; game.last = performance.now();
+          setStage('victory', true); announcer.textContent = `Victory. Final score: ${game.score}. Thank you for lighting the grove.`; requestAnimationFrame(finishCelebration);
+        } else {
+          game.phase = 'loss'; audio.lose(); setStage('loss', true); announcer.textContent = `Game over. Final score: ${game.score}. Try again when ready.`;
+        }
+        updateHud(); draw();
+      }
+      function hitsObstacle(f, o) { const left = f.x - 20, right = f.x + 20, top = f.y - 17, bottom = f.y + 17; return right > o.x && left < o.x + o.width && (top < o.top || bottom > o.bottom); }
+      function updateAmbient(dt) {
+        game.elapsed += dt; game.world += dt * .055;
+        for (const firefly of game.fireflies) { firefly.y -= firefly.speed * dt / 16.67; if (firefly.y < 62) { firefly.y = H - 22; firefly.x = random(8, W - 8); } }
+      }
+      function updateParticles(dt) {
+        const frame = dt / 16.67;
+        for (const p of game.particles) { p.x += p.vx * frame; p.y += p.vy * frame; p.vy += .045 * frame; p.life -= frame; }
+        game.particles = game.particles.filter(p => p.life > 0);
+        for (const p of game.effects) { p.x += p.vx * frame; p.y += p.vy * frame; p.vy += .1 * frame; p.life -= frame; }
+        game.effects = game.effects.filter(p => p.life > 0);
+        for (const p of game.confetti) { p.x += p.vx * frame; p.y += p.vy * frame; p.vy += .18 * frame; p.rotation += p.spin * frame; p.life -= frame; }
+        game.confetti = game.confetti.filter(p => p.life > 0 && p.y < H + 28);
+      }
+      function update(dt) {
+        const g = game;
+        updateAmbient(dt); g.activeElapsed += dt; g.timeLeft -= dt / 1000;
+        const difficulty = getDifficulty();
+        g.dawnProgress = Math.max(0, Math.min(1, (30 - g.timeLeft) / 30));
+        if (!g.dawnAnnounced && g.timeLeft <= 30) { g.dawnAnnounced = true; audio.dawn(); announcer.textContent = 'Dawn is beginning to warm the Enchanted Forest.'; }
+        if (g.timeLeft <= 0) { g.timeLeft = 0; endGame('time'); return; }
+        g.spawn += dt;
+        while (g.spawn >= difficulty.spawnInterval) { addObstacle(difficulty); g.spawn -= difficulty.spawnInterval; }
+        const f = g.fairy; const frame = dt / 16.67;
+        f.vy += .62 * frame; f.y += f.vy * frame; f.angle = Math.max(-.55, Math.min(1.1, f.vy * .065)); f.wing += dt * .028;
+        g.shieldRecovery = Math.max(0, g.shieldRecovery - dt); g.shieldCooldown = Math.max(0, g.shieldCooldown - dt);
+        for (const item of g.collectibles) { item.x -= difficulty.speed * frame; item.phase += dt * .006; item.spin += dt * .012; }
+        collectPickups();
+        if (f.y < 40 || f.y > H - 32) { if (!absorbImpact()) { endGame('collision'); return; } }
+        updateParticles(dt);
+        for (const o of g.obstacles) {
+          o.x -= difficulty.speed * frame;
+          if (hitsObstacle(f, o)) { if (!absorbImpact(o)) { endGame('collision'); return; } }
+          if (!o.passed && !o.destroyed && o.x + o.width < f.x) {
+            o.passed = true; g.score++;
+            const newBest = g.score > best;
+            if (newBest) { best = g.score; g.newHighAchieved = true; saveBest(); }
+            if (newBest && !g.highScoreCelebrated) { g.highScoreCelebrated = true; celebrate(false, reducedMotion ? 20 : 48); announcer.textContent = `New best score: ${g.score}`; }
+            else announcer.textContent = `Score ${g.score}`;
+            for (let i = 0; i < 20; i++) g.particles.push({ x: f.x, y: f.y, vx: random(-2, 3), vy: random(-4, 2), life: random(22, 45), size: random(1, 4), hue: 48 });
+          }
+        }
+        g.obstacles = g.obstacles.filter(o => !o.destroyed && o.x + o.width > -30); updateHud();
+      }
+
+      function roundedRect(x, y, width, height, radius) { ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); }
+      function drawMoon() {
+        const x = W * .74, y = 160;
+        const glow = ctx.createRadialGradient(x - 14, y - 14, 2, x, y, 112);
+        glow.addColorStop(0, 'rgba(255,255,255,.98)'); glow.addColorStop(.35, 'rgba(254,243,199,.87)'); glow.addColorStop(.65, 'rgba(196,181,253,.25)'); glow.addColorStop(1, 'rgba(196,181,253,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, 112, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fef3c7'; ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(217,206,176,.4)'; ctx.beginPath(); ctx.arc(x - 15, y + 9, 7, 0, Math.PI * 2); ctx.arc(x + 13, y - 13, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      function drawStars() {
+        const alphaMultiplier = 1 - game.dawnProgress;
+        for (const star of game.stars) {
+          const pulse = .45 + .55 * Math.sin(game.elapsed * .003 + star.phase);
+          ctx.fillStyle = `rgba(254,243,199,${(.22 + pulse * .65) * alphaMultiplier})`; ctx.shadowColor = '#fef3c7'; ctx.shadowBlur = star.r * 5;
+          ctx.beginPath(); ctx.arc(star.x, star.y, star.r * (.6 + pulse * .4), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+      function drawBackground() {
+        const dawn = game.dawnProgress || 0;
+        const sky = ctx.createLinearGradient(0, 0, 0, H);
+        sky.addColorStop(0, `rgb(${Math.round(11 + 102 * dawn)},${Math.round(18 + 57 * dawn)},${Math.round(43 + 38 * dawn)})`);
+        sky.addColorStop(.5, `rgb(${Math.round(46 + 178 * dawn)},${Math.round(16 + 94 * dawn)},${Math.round(101 - 30 * dawn)})`);
+        sky.addColorStop(1, `rgb(${Math.round(18 + 56 * dawn)},${Math.round(55 + 69 * dawn)},${Math.round(47 + 19 * dawn)})`);
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+        const horizon = ctx.createRadialGradient(W * .2, H * .88, 2, W * .2, H * .88, W * .8);
+        horizon.addColorStop(0, `rgba(254,193,120,${dawn * .62})`); horizon.addColorStop(1, 'rgba(254,193,120,0)'); ctx.fillStyle = horizon; ctx.fillRect(0, 0, W, H);
+        const haze = ctx.createRadialGradient(W * .5, H * .68, 40, W * .5, H * .68, W * .75);
+        haze.addColorStop(0, `rgba(${Math.round(16 + 160 * dawn)},${Math.round(185 + 40 * dawn)},${Math.round(129 - 40 * dawn)},.17)`); haze.addColorStop(1, 'rgba(15,23,42,0)'); ctx.fillStyle = haze; ctx.fillRect(0, 0, W, H);
+        drawStars(); ctx.save(); ctx.globalAlpha = 1 - dawn * .85; drawMoon(); ctx.restore();
+        ctx.fillStyle = `rgba(10,25,35,${.45 - dawn * .2})`;
+        for (let i = 0; i < 10; i++) { const x = ((i * 117 + game.world * 8) % (W + 150)) - 80; const h = 210 + (i % 3) * 45; ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + 52, H - h); ctx.lineTo(x + 107, H); ctx.closePath(); ctx.fill(); }
+        for (const f of game.fireflies) {
+          const alpha = f.a * (.55 + Math.sin(game.elapsed * .003 + f.phase) * .45);
+          ctx.fillStyle = `rgba(${f.color},${alpha})`; ctx.shadowColor = `rgb(${f.color})`; ctx.shadowBlur = f.r * 5; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+      function drawFlower(x, y, scale, hue) {
+        ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.shadowColor = `hsl(${hue},100%,70%)`; ctx.shadowBlur = 11;
+        ctx.fillStyle = `hsl(${hue},92%,72%)`;
+        for (let i = 0; i < 5; i++) { ctx.save(); ctx.rotate(i * Math.PI * .4); ctx.beginPath(); ctx.ellipse(0, -5, 3, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+        ctx.fillStyle = '#fef3c7'; ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      function drawMushroom(x, y, scale, palette, seed) {
+        const colors = { violet: ['#e9d5ff', '#a855f7', '#6b21a8'], teal: ['#ccfbf1', '#14b8a6', '#0f766e'], gold: ['#fef3c7', '#f59e0b', '#92400e'] }[palette];
+        ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.shadowColor = colors[1]; ctx.shadowBlur = 18;
+        ctx.fillStyle = '#d1fae5'; roundedRect(-4, -1, 8, 17, 4); ctx.fill();
+        ctx.fillStyle = colors[2]; ctx.beginPath(); ctx.ellipse(0, -2, 15, 10, 0, Math.PI, 0); ctx.lineTo(15, 0); ctx.lineTo(-15, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = colors[1]; ctx.beginPath(); ctx.ellipse(0, -5, 16, 10, 0, Math.PI, 0); ctx.lineTo(16, 0); ctx.lineTo(-16, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = colors[0];
+        for (let i = 0; i < 3; i++) { const sx = -7 + i * 7; const sy = -6 - hash(seed, i) * 3; ctx.beginPath(); ctx.arc(sx, sy, 1.6 + hash(seed, i + 7) * 1.6, 0, Math.PI * 2); ctx.fill(); }
+        ctx.restore();
+      }
+      function drawTree(x, width, height, flipped, seed) {
+        if (height < 28) return;
+        ctx.save(); if (flipped) { ctx.translate(0, H); ctx.scale(1, -1); }
+        const inner = Math.max(28, height - 7); const bark = ctx.createLinearGradient(x, 0, x + width, 0);
+        bark.addColorStop(0, '#081f25'); bark.addColorStop(.2, '#244638'); bark.addColorStop(.55, '#4b5f38'); bark.addColorStop(.82, '#183a32'); bark.addColorStop(1, '#081f25');
+        ctx.fillStyle = bark; ctx.beginPath(); ctx.moveTo(x + 4, 0); ctx.bezierCurveTo(x + width * .18, inner * .18, x - 6, inner * .6, x + width * .11, inner); ctx.lineTo(x + width * .87, inner); ctx.bezierCurveTo(x + width + 7, inner * .68, x + width * .84, inner * .2, x + width - 5, 0); ctx.closePath(); ctx.fill();
+        for (let i = 0; i < 6; i++) { const bx = x + width * (.1 + hash(seed, i) * .78); const top = hash(seed, i + 20) * 16; ctx.beginPath(); ctx.moveTo(bx, top); ctx.bezierCurveTo(bx - 14, inner * .28, bx + 17, inner * .58, bx - 8, inner); ctx.strokeStyle = 'rgba(9,27,29,.55)'; ctx.lineWidth = 5 + hash(seed, i + 36) * 4; ctx.stroke(); }
+        ctx.fillStyle = 'rgba(132,204,22,.25)';
+        for (let i = 0; i < 16; i++) { const mx = x + 9 + hash(seed, i + 50) * (width - 18); const my = 12 + hash(seed, i + 70) * Math.max(8, inner - 30); ctx.beginPath(); ctx.ellipse(mx, my, 5 + hash(seed, i + 88) * 9, 3 + hash(seed, i + 104) * 4, hash(seed, i + 115) * Math.PI, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = '#34d399'; ctx.shadowColor = '#34d399'; ctx.shadowBlur = 13; ctx.lineWidth = 2.5;
+        for (let i = 0; i < 3; i++) { const vx = x + width * (.18 + i * .29); ctx.beginPath(); ctx.moveTo(vx, 0); ctx.bezierCurveTo(vx + 25, inner * .25, vx - 24, inner * .63, vx + (i - 1) * 11, inner); ctx.stroke(); }
+        const mushroomCount = 4 + Math.floor(hash(seed, 129) * 4); const palettes = ['violet', 'teal', 'gold'];
+        for (let i = 0; i < mushroomCount; i++) {
+          const size = i === 0 ? .9 + hash(seed, 140) * .45 : .38 + hash(seed, i + 151) * .42;
+          const mx = x + 18 + hash(seed, i + 170) * Math.max(14, width - 36); const my = Math.max(24, inner - 8 - (i % 3) * (16 + hash(seed, i + 190) * 22));
+          drawMushroom(mx, my, size, palettes[Math.floor(hash(seed, i + 210) * palettes.length)], seed + i * 17);
+          if (i < 3) drawFlower(mx + 10, my + 7, .55, [290, 170, 48][i]);
+        }
+        ctx.restore(); ctx.shadowBlur = 0;
+      }
+      function drawObstacles() { for (const o of game.obstacles) { drawTree(o.x, o.width, o.top, false, o.seed); drawTree(o.x, o.width, H - o.bottom, true, o.seed + 37); } }
+      function drawForestFloor() {
+        const ground = ctx.createLinearGradient(0, H - 120, 0, H); ground.addColorStop(0, 'rgba(6,78,59,.02)'); ground.addColorStop(1, 'rgba(2,44,34,.72)'); ctx.fillStyle = ground; ctx.fillRect(0, H - 120, W, 120);
+        const mushrooms = [[78, H - 75, .85, 'teal'], [145, H - 53, .45, 'violet'], [602, H - 72, .95, 'gold'], [660, H - 47, .5, 'teal']];
+        mushrooms.forEach(([x, y, size, palette], index) => drawMushroom(x, y, size, palette, 800 + index));
+        [[41, H - 80, .85, 312], [195, H - 72, .62, 176], [548, H - 69, .75, 48], [682, H - 91, .7, 277]].forEach(args => drawFlower(...args));
+      }
+      function drawParticles() {
+        for (const p of game.particles) { const alpha = Math.min(1, p.life / 20); ctx.fillStyle = `hsla(${p.hue},100%,76%,${alpha})`; ctx.shadowColor = `hsl(${p.hue},100%,70%)`; ctx.shadowBlur = 9; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
+        ctx.shadowBlur = 0;
+      }
+      function drawConfetti() {
+        for (const p of game.confetti) {
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.globalAlpha = Math.min(1, p.life / 25); ctx.fillStyle = `hsl(${p.hue},95%,68%)`;
+          if (p.shape === 0) ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * .62);
+          else if (p.shape === 1) { ctx.beginPath(); ctx.arc(0, 0, p.size * .46, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.beginPath(); ctx.moveTo(0, -p.size * .7); ctx.lineTo(p.size * .62, p.size * .55); ctx.lineTo(-p.size * .62, p.size * .55); ctx.closePath(); ctx.fill(); }
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+      }
+      function drawStardust(x, y, phase, scale, count = 12) {
+        ctx.save(); ctx.globalCompositeOperation = 'screen';
+        for (let i = 0; i < count; i++) {
+          const offset = i * 15 * scale; const bob = Math.sin(phase + i * .9) * 7 * scale; const size = (1.4 + (i % 3)) * scale;
+          ctx.fillStyle = i % 3 === 0 ? '#fcd34d' : '#a7f3d0'; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10 * scale;
+          ctx.beginPath(); ctx.arc(x - offset, y + bob + (i % 2 ? 9 : -7) * scale, size, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+      function drawFairySprite({ x, y, scale = 1, facing = 1, angle = 0, wingPhase = 0, expression = 'happy', palette = 'gold', trail = false }) {
+        const colors = palette === 'violet' ? { dress: '#c4b5fd', hair: '#ddd6fe', glow: '#a78bfa' } : palette === 'mint' ? { dress: '#6ee7b7', hair: '#d1fae5', glow: '#34d399' } : { dress: '#fcd34d', hair: '#fef3c7', glow: '#fcd34d' };
+        const wing = reducedMotion ? .12 : Math.sin(wingPhase * 3.9) * .28;
+        ctx.save(); ctx.translate(x, y); ctx.scale(facing * scale, scale); ctx.rotate(angle);
+        ctx.globalCompositeOperation = 'screen'; ctx.shadowColor = colors.glow; ctx.shadowBlur = 28;
+        ctx.fillStyle = 'rgba(221,214,254,.55)'; ctx.beginPath(); ctx.ellipse(-18, -17, 36, 12, -.64 + wing, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(-19, 15, 34, 12, .62 - wing, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(110,231,183,.48)'; ctx.beginPath(); ctx.ellipse(3, -26, 22, 8, -.32 - wing, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(2, 23, 22, 8, .32 + wing, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowColor = colors.glow; ctx.shadowBlur = 18; ctx.fillStyle = colors.dress; ctx.beginPath(); ctx.moveTo(-3, -2); ctx.quadraticCurveTo(-17, 23, -4, 35); ctx.lineTo(18, 30); ctx.quadraticCurveTo(10, 10, 8, -4); ctx.closePath(); ctx.fill();
+        ctx.shadowColor = colors.hair; ctx.shadowBlur = 12; ctx.fillStyle = '#fde7d3'; ctx.beginPath(); ctx.ellipse(11, -15, 11, 13, -.22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(6, -20, 12, Math.PI * .72, Math.PI * 2.03); ctx.lineTo(0, -4); ctx.quadraticCurveTo(13, -8, 19, -21); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(15, -17, 1.7, 0, Math.PI * 2); ctx.fill();
+        if (expression === 'sad') { ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(18, -9, 3.3, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); }
+        else { ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(18, -10, 3.2, 0, Math.PI); ctx.stroke(); }
+        ctx.fillStyle = '#fde7d3'; ctx.beginPath(); ctx.moveTo(21, -14); ctx.lineTo(27, -11); ctx.lineTo(21, -9); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        if (trail) drawStardust(x - 16 * scale * facing, y + 7 * scale, wingPhase, scale, 10);
+      }
+      function drawCollectibles() {
+        for (const item of game.collectibles) {
+          const bob = Math.sin(item.phase) * 7;
+          ctx.save(); ctx.translate(item.x, item.y + bob);
+          if (item.type === 'coin') {
+            ctx.rotate(reducedMotion ? 0 : item.spin);
+            ctx.shadowColor = '#fcd34d'; ctx.shadowBlur = 18; ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(0, 0, item.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, item.radius - 4, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#fff7cc'; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(3, -2); ctx.lineTo(9, 0); ctx.lineTo(3, 2); ctx.lineTo(0, 8); ctx.lineTo(-3, 2); ctx.lineTo(-9, 0); ctx.lineTo(-3, -2); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.shadowColor = '#60a5fa'; ctx.shadowBlur = 24; ctx.fillStyle = 'rgba(96,165,250,.32)'; ctx.beginPath(); ctx.arc(0, 0, item.radius + 8, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, item.radius, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#dbeafe'; ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(9, 0); ctx.lineTo(0, 14); ctx.lineTo(-9, 0); ctx.closePath(); ctx.fill();
+          }
+          ctx.restore();
+        }
+        ctx.shadowBlur = 0;
+      }
+      function drawEffects() {
+        for (const effect of game.effects) {
+          ctx.fillStyle = effect.color; ctx.globalAlpha = Math.min(1, effect.life / 18); ctx.shadowColor = effect.color; ctx.shadowBlur = 11;
+          ctx.beginPath(); ctx.arc(effect.x, effect.y, effect.radius, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+      function drawShieldAura() {
+        if (!game.shieldCharges) return;
+        const f = game.fairy; const pulse = reducedMotion ? 0 : Math.sin(game.elapsed * .008) * 4;
+        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.shadowColor = '#60a5fa'; ctx.shadowBlur = 24;
+        ctx.fillStyle = 'rgba(96,165,250,.15)'; ctx.beginPath(); ctx.arc(f.x, f.y, 39 + pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(191,219,254,.9)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(f.x, f.y, 35 + pulse, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      }
+      function drawGameplayFairy() {
+        const f = game.fairy;
+        drawShieldAura();
+        drawFairySprite({ x: f.x, y: f.y, scale: .95, angle: f.angle, wingPhase: f.wing, expression: 'happy', palette: 'gold', trail: true });
+      }
+      function drawStoryFairies() {
+        const phase = game.elapsed * .003;
+        if (game.phase === 'intro') {
+          drawFairySprite({ x: W * .63, y: H * .34 + Math.sin(phase) * 8, scale: 2.25, angle: -.08, wingPhase: phase, expression: 'happy', palette: 'gold', trail: true });
+        } else if (game.phase === 'loss') {
+          drawFairySprite({ x: W * .5, y: H * .32, scale: 1.95, angle: .21, wingPhase: .5, expression: 'sad', palette: 'violet', trail: false });
+          drawStardust(W * .42, H * .42, 1.2, .65, 5);
+        } else if (game.phase === 'victory') {
+          drawFairySprite({ x: W * .5, y: H * .31 + Math.sin(phase) * 6, scale: 1.75, wingPhase: phase, expression: 'happy', palette: 'gold', trail: true });
+          drawFairySprite({ x: W * .21, y: H * .37 + Math.sin(phase + 1) * 9, scale: .85, facing: 1, angle: -.18, wingPhase: phase + .7, expression: 'happy', palette: 'mint', trail: true });
+          drawFairySprite({ x: W * .79, y: H * .39 + Math.sin(phase + 2) * 8, scale: .8, facing: -1, angle: .18, wingPhase: phase + 1.5, expression: 'happy', palette: 'violet', trail: true });
+        }
+      }
+      function draw() {
+        ctx.clearRect(0, 0, W, H); drawBackground();
+        if (game.phase === 'running') { drawObstacles(); drawCollectibles(); drawParticles(); drawEffects(); drawConfetti(); drawGameplayFairy(); }
+        else { drawForestFloor(); drawEffects(); drawConfetti(); drawStoryFairies(); }
+      }
+      function loop(now, runId) {
+        if (!game.running || game.phase !== 'running' || (runId && game.runId !== runId)) return;
+        const dt = Math.min(35, now - game.last || 16.67); game.last = now; update(dt); draw(); if (game.running) requestAnimationFrame(next => loop(next, runId));
+      }
+      function handleGameAction(event) {
+        if (event) event.preventDefault();
+        if (game.phase === 'running') flap(); else if (game.phase === 'intro' || game.phase === 'loss' || game.phase === 'victory') beginFlight();
+      }
+
+      restartButton.addEventListener('click', event => { event.stopPropagation(); beginFlight(); });
+      soundToggle.addEventListener('click', event => { event.stopPropagation(); try { audio.ensure(); audio.setMuted(!audio.muted); } catch (_) { audio.setMuted(!audio.muted); } });
+      canvas.addEventListener('pointerdown', event => { if (game.phase === 'running') handleGameAction(event); });
+      window.addEventListener('keydown', event => {
+        if ((event.code === 'Space' || event.code === 'ArrowUp') && !event.target.matches('button, input, select, textarea')) handleGameAction(event);
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopCinematic();
+        else if (game.phase === 'intro' && !reducedMotion) startIntroCinematic();
+        if (game.running) game.last = performance.now();
+      });
+      window.addEventListener('blur', () => { if (game.running) game.last = performance.now(); });
+      updateSoundToggle(); bestEl.textContent = best; resetToIntro();
+    })();
+  </script>
+</body>
+</html>
